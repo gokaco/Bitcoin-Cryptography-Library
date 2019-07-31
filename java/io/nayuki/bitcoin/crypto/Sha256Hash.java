@@ -11,6 +11,7 @@ package io.nayuki.bitcoin.crypto;
 import java.util.Arrays;
 import java.util.Objects;
 
+import org.checkerframework.checker.signedness.qual.*;
 
 /**
  * A 32-byte (256-bit) SHA-256 hash value. Immutable.
@@ -34,7 +35,7 @@ public final class Sha256Hash implements Comparable<Sha256Hash> {
 	
 	/*---- Fields ----*/
 	
-	private final byte[] hash;
+	private final @Unsigned byte[] hash;
 	
 	
 	
@@ -47,7 +48,7 @@ public final class Sha256Hash implements Comparable<Sha256Hash> {
 	 * @throws IllegalArgumentException if the array is not of length 32
 	 * @throws NullPointerException if the array is {@code null}
 	 */
-	public Sha256Hash(byte[] b) {
+	public Sha256Hash(@Unsigned byte[] b) {
 		Objects.requireNonNull(b);
 		if (b.length != HASH_LENGTH)
 			throw new IllegalArgumentException();
@@ -68,7 +69,7 @@ public final class Sha256Hash implements Comparable<Sha256Hash> {
 			throw new IllegalArgumentException("Invalid hash string");
 		hash = new byte[HASH_LENGTH];
 		for (int i = 0; i < hash.length; i++)
-			hash[hash.length - 1 - i] = (byte)Integer.parseInt(s.substring(i * 2, (i + 1) * 2), 16);
+			hash[hash.length - 1 - i] = (byte)Integer.parseUnsignedInt(s.substring(i * 2, (i + 1) * 2), 16);
 	}
 	
 	
@@ -79,7 +80,7 @@ public final class Sha256Hash implements Comparable<Sha256Hash> {
 	 * Returns a new 32-byte array representing this hash value. Constant-time with respect to this hash value.
 	 * @return a byte array representing this hash
 	 */
-	public byte[] toBytes() {
+	public @Unsigned byte[] toBytes() {
 		return hash.clone();
 	}
 	
@@ -104,7 +105,8 @@ public final class Sha256Hash implements Comparable<Sha256Hash> {
 	 * Returns the hash code of this object. Constant-time with respect to this hash value.
 	 * @return the hash code of this object
 	 */
-	public int hashCode() {
+	@SuppressWarnings("signedness")
+	public @Unsigned int hashCode() {
 		return (hash[0] & 0xFF) | (hash[1] & 0xFF) << 8 | (hash[2] & 0xFF) << 16 | hash[3] << 24;
 	}
 	

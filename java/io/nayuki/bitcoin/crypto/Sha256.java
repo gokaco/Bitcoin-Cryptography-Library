@@ -12,6 +12,7 @@ import static java.lang.Integer.rotateRight;
 import java.util.Arrays;
 import java.util.Objects;
 
+import org.checkerframework.checker.signedness.qual.*;
 
 /**
  * Computes the SHA-256 hash of an array of bytes. Not instantiable.
@@ -30,7 +31,7 @@ public final class Sha256 {
 	 * @return an object representing the message's SHA-256 hash
 	 * @throws NullPointerException if the message is {@code null}
 	 */
-	public static Sha256Hash getHash(byte[] msg) {
+	public static Sha256Hash getHash(@Unsigned byte[] msg) {
 		return getHash(msg, INITIAL_STATE.clone(), 0);
 	}
 	
@@ -41,7 +42,7 @@ public final class Sha256 {
 	 * @return an object representing the message's double SHA-256 hash
 	 * @throws NullPointerException if the message is {@code null}
 	 */
-	public static Sha256Hash getDoubleHash(byte[] msg) {
+	public static Sha256Hash getDoubleHash(@Unsigned byte[] msg) {
 		return getHash(getHash(msg).toBytes());
 	}
 	
@@ -53,7 +54,7 @@ public final class Sha256 {
 	 * @return an object representing the HMAC-SHA-256 of the key and message
 	 * @throws NullPointerException if the key or message is {@code null}
 	 */
-	public static Sha256Hash getHmac(byte[] key, byte[] msg) {
+	public static Sha256Hash getHmac(@Unsigned byte[] key, @Unsigned byte[] msg) {
 		Objects.requireNonNull(key);
 		Objects.requireNonNull(msg);
 		
@@ -63,7 +64,7 @@ public final class Sha256 {
 		// Compute inner hash
 		for (int i = 0; i < key.length; i++)
 			key[i] ^= 0x36;
-		int[] state = INITIAL_STATE.clone();
+		@Unsigned int[] state = INITIAL_STATE.clone();
 		compress(state, key, key.length);
 		Sha256Hash innerHash = getHash(msg, state, key.length);
 		
@@ -80,43 +81,45 @@ public final class Sha256 {
 	/*---- Private functions ----*/
 	
 	// Note: The initState array will be modified.
-	private static Sha256Hash getHash(byte[] msg, int[] initState, int prefixLen) {
+	private static Sha256Hash getHash(@Unsigned byte[] msg, @Unsigned int[] initState, @Unsigned int prefixLen) {
 		// Compress whole message blocks
 		Objects.requireNonNull(msg);
-		int[] state = initState;
+		@Unsigned int[] state = initState;
 		int off = msg.length / BLOCK_LEN * BLOCK_LEN;
 		compress(state, msg, off);
 		
 		// Final blocks, padding, and length
-		byte[] block = new byte[BLOCK_LEN];
+		@Unsigned byte[] block = new byte[BLOCK_LEN];
 		System.arraycopy(msg, off, block, 0, msg.length - off);
 		off = msg.length % block.length;
-		block[off] = (byte)0x80;
+		@SuppressWarnings("value")
+		@Unsigned byte b = (byte)0x80;
+		block[off] = b;
 		off++;
 		if (off + 8 > block.length) {
 			compress(state, block, block.length);
 			Arrays.fill(block, (byte)0);
 		}
-		long len = ((long)msg.length + prefixLen) << 3;
+		@Unsigned long len = ((long)msg.length + prefixLen) << 3;
 		for (int i = 0; i < 8; i++)
 			block[block.length - 1 - i] = (byte)(len >>> (i * 8));
 		compress(state, block, block.length);
 		
 		// Int32 array to bytes in big endian
-		byte[] result = new byte[state.length * 4];
+		@Unsigned byte[] result = new byte[state.length * 4];
 		for (int i = 0; i < result.length; i++)
 			result[i] = (byte)(state[i / 4] >>> ((3 - i % 4) * 8));
 		return new Sha256Hash(result);
 	}
 	
 	
-	private static void compress(int[] state, byte[] blocks, int len) {
+	private static void compress(@Unsigned int[] state, @Unsigned byte[] blocks, int len) {
 		if (len < 0 || len % BLOCK_LEN != 0)
 			throw new IllegalArgumentException();
 		for (int i = 0; i < len; i += BLOCK_LEN) {
 			
 			// Message schedule
-			int[] schedule = new int[64];
+			@Unsigned int[] schedule = new int[64];
 			for (int j = 0; j < BLOCK_LEN; j++)
 				schedule[j / 4] |= (blocks[i + j] & 0xFF) << ((3 - j % 4) * 8);
 			for (int j = 16; j < 64; j++) {
@@ -126,17 +129,17 @@ public final class Sha256 {
 			}
 			
 			// The 64 rounds
-			int a = state[0];
-			int b = state[1];
-			int c = state[2];
-			int d = state[3];
-			int e = state[4];
-			int f = state[5];
-			int g = state[6];
-			int h = state[7];
+			@Unsigned int a = state[0];
+			@Unsigned int b = state[1];
+			@Unsigned int c = state[2];
+			@Unsigned int d = state[3];
+			@Unsigned int e = state[4];
+			@Unsigned int f = state[5];
+			@Unsigned int g = state[6];
+			@Unsigned int h = state[7];
 			for (int j = 0; j < 64; j++) {
-				int t1 = h + (rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25)) + (g ^ (e & (f ^ g))) + ROUND_CONSTANTS[j] + schedule[j];
-				int t2 = (rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22)) + ((a & (b | c)) | (b & c));
+				@Unsigned int t1 = h + (rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25)) + (g ^ (e & (f ^ g))) + ROUND_CONSTANTS[j] + schedule[j];
+				@Unsigned int t2 = (rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22)) + ((a & (b | c)) | (b & c));
 				h = g;
 				g = f;
 				f = e;
@@ -146,27 +149,27 @@ public final class Sha256 {
 				b = a;
 				a = t1 + t2;
 			}
-			state[0] += a;
-			state[1] += b;
-			state[2] += c;
-			state[3] += d;
-			state[4] += e;
-			state[5] += f;
-			state[6] += g;
-			state[7] += h;
+			state[0] = state[0] +a;
+			state[1] = state[1] +b;
+			state[2] = state[2] +c;
+			state[3] = state[3] +d;
+			state[4] = state[4] +e;
+			state[5] = state[5] +f;
+			state[6] = state[6] +g;
+			state[7] = state[7] +h;
 		}
 	}
 	
 	
 	/*---- Class constants ----*/
 	
-	private static final int[] INITIAL_STATE = {
+	private static final @Unsigned int[] INITIAL_STATE = {
 		0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A,
 		0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
 	};
 	
 	
-	private static final int[] ROUND_CONSTANTS = {
+	private static final @Unsigned int[] ROUND_CONSTANTS = {
 		0x428A2F98, 0x71374491, 0xB5C0FBCF, 0xE9B5DBA5,
 		0x3956C25B, 0x59F111F1, 0x923F82A4, 0xAB1C5ED5,
 		0xD807AA98, 0x12835B01, 0x243185BE, 0x550C7DC3,

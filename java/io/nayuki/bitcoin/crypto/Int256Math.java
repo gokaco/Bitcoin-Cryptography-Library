@@ -8,6 +8,7 @@
 
 package io.nayuki.bitcoin.crypto;
 
+import org.checkerframework.checker.signedness.qual.*;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -21,19 +22,19 @@ public final class Int256Math {
 	
 	/*---- Critical class constants ----*/
 	
-	static final int NUM_WORDS = 8;
+	static final @Unsigned int NUM_WORDS = 8;
 	
 	
 	/*---- Uint256 conversion functions ----*/
 	
 	// Parses the given 64-digit hexadecimal string as a uint256 and stores it in the given array at the given offset.
-	public static void hexToUint(String hex, int[] val, int off) {
+	public static void hexToUint(String hex, @Unsigned int[] val, @Unsigned int off) {
 		Objects.requireNonNull(hex);
 		if (!hex.matches("[0-9a-fA-F]{64}"))
 			throw new IllegalArgumentException();
 		checkUint(val, off);
 		for (int i = 0; i < NUM_WORDS; i++)
-			val[off + i] = (int)Long.parseLong(hex.substring((7 - i) * 8, (8 - i) * 8), 16);
+			val[off + i] = (int)Long.parseUnsignedLong(hex.substring((7 - i) * 8, (8 - i) * 8), 16);
 	}
 	
 	
@@ -47,17 +48,17 @@ public final class Int256Math {
 	
 	
 	// Returns a 32-byte array representing the uint256 in the given array at the given offset encoded in big endian.
-	public static byte[] uintToBytes(int[] val, int off) {
+	public static @Unsigned byte[] uintToBytes(@Unsigned int[] val, @Unsigned int off) {
 		checkUint(val, off);
-		byte[] result = new byte[NUM_WORDS * 4];
-		for (int i = 0; i < result.length; i++)
+		@Unsigned byte[] result = new byte[NUM_WORDS * 4];
+		for (@Unsigned int i = 0; i < result.length; i++)
 			result[result.length - 1 - i] = (byte)(val[off + (i >>> 2)] >>> ((i & 3) << 3));
 		return result;
 	}
 	
 	
 	// Interprets the given 32-byte array as a uint256 encoded in big endian and stores it in the given array at the given offset.
-	public static void bytesToUint(byte[] b, int[] val, int off) {
+	public static void bytesToUint(@Unsigned byte[] b, @Unsigned int[] val, @Unsigned int off) {
 		Objects.requireNonNull(b);
 		if (b.length != NUM_WORDS * 4)
 			throw new IllegalArgumentException();
@@ -75,16 +76,16 @@ public final class Int256Math {
 	// Computes z = (x + (y * enable)) mod 2^256, returning a carry-out of 0 or 1.
 	// Enable must be 0 or 1. Offsets must be multiples of 8 and can overlap.
 	// Constant-time with respect to both values and the enable.
-	public static int uintAdd(int[] val, int xOff, int yOff, int enableY, int zOff) {
+	public static @Unsigned int uintAdd(@Unsigned int[] val, @Unsigned int xOff, @Unsigned int yOff, @Unsigned int enableY, @Unsigned int zOff) {
 		checkUint(val, xOff);
 		checkUint(val, yOff);
 		checkUint(val, zOff);
 		checkEnable(enableY);
 		
 		long mask = LONG_MASK & -enableY;
-		int carry = 0;
+		@Unsigned int carry = 0;
 		for (int i = 0; i < NUM_WORDS; i++) {
-			long sum = (val[xOff + i] & LONG_MASK) + (val[yOff + i] & mask) + carry;
+			@Unsigned long sum = (val[xOff + i] & LONG_MASK) + (val[yOff + i] & mask) + carry;
 			val[zOff + i] = (int)sum;
 			carry = (int)(sum >>> 32);
 			assert (carry >>> 1) == 0;
@@ -96,16 +97,16 @@ public final class Int256Math {
 	// Computes z = (x - (y * enable)) mod 2^256, returning a borrow-out of 0 or 1.
 	// Enable must be 0 or 1. Offsets must be multiples of 8 and can overlap.
 	// Constant-time with respect to both values and the enable.
-	public static int uintSubtract(int[] val, int xOff, int yOff, int enableY, int zOff) {
+	public static @Unsigned int uintSubtract(@Unsigned int[] val, @Unsigned int xOff, @Unsigned int yOff, @Unsigned int enableY, @Unsigned int zOff) {
 		checkUint(val, xOff);
 		checkUint(val, yOff);
 		checkUint(val, zOff);
 		checkEnable(enableY);
 		
 		long mask = LONG_MASK & -enableY;
-		int borrow = 0;
+		@Unsigned int borrow = 0;
 		for (int i = 0; i < NUM_WORDS; i++) {
-			long diff = (val[xOff + i] & LONG_MASK) - (val[yOff + i] & mask) - borrow;
+			@Unsigned long diff = (val[xOff + i] & LONG_MASK) - (val[yOff + i] & mask) - borrow;
 			val[zOff + i] = (int)diff;
 			borrow = -(int)(diff >>> 32);
 			assert (borrow >>> 1) == 0;
@@ -116,12 +117,12 @@ public final class Int256Math {
 	
 	// Computes z = (x << 1) mod 2^256, returning the old leftmost bit of 0 or 1.
 	// Offsets must be multiples of 8 and can overlap. Constant-time with respect to the value.
-	public static int uintShiftLeft1(int[] val, int xOff, int zOff) {
+	public static @Unsigned int uintShiftLeft1(@Unsigned int[] val, @Unsigned int xOff, @Unsigned int zOff) {
 		checkUint(val, xOff);
 		checkUint(val, zOff);
-		int prev = 0;
+		@Unsigned int prev = 0;
 		for (int i = 0; i < NUM_WORDS; i++) {
-			int cur = val[xOff + i];
+			@Unsigned int cur = val[xOff + i];
 			val[zOff + i] = cur << 1 | prev >>> 31;
 			prev = cur;
 		}
@@ -132,16 +133,16 @@ public final class Int256Math {
 	// Computes y = (x >>> 1), which is the same as dividing by 2 and flooring.
 	// Enable must be 0 or 1. Offsets must be multiples of 8 and can overlap.
 	// Constant-time with respect to the value and the enable.
-	public static void uintShiftRight1(int[] val, int xOff, int enableShift, int zOff) {
+	public static void uintShiftRight1(@Unsigned int[] val, @Unsigned int xOff, @Unsigned int enableShift, @Unsigned int zOff) {
 		checkUint(val, xOff);
 		checkUint(val, zOff);
 		checkEnable(enableShift);
 		
-		int mask = -enableShift;
-		int cur = val[xOff];
+		@Unsigned int mask = -enableShift;
+		@Unsigned int cur = val[xOff];
 		int i;
 		for (i = 0; i < NUM_WORDS - 1; i++) {
-			int next = val[xOff + i + 1];
+			@Unsigned int next = val[xOff + i + 1];
 			val[zOff + i] = ((cur >>> 1 | next << 31) & mask) | (cur & ~mask);
 			cur = next;
 		}
@@ -152,11 +153,12 @@ public final class Int256Math {
 	// Computes z = x^-1 mod y. If x == 0, then the reciprocal is 0.
 	// The modulus y must be odd and coprime to x. x must be less than the modulus.
 	// Requires 48 words of temporary space. Constant-time with respect to both values.
-	public static void reciprocal(int[] val, int xOff, int yOff, int zOff, int tempOff) {
+	public static void reciprocal(@Unsigned int[] val, @Unsigned int xOff, @Unsigned int yOff, @Unsigned int zOff, @Unsigned int tempOff) {
 		checkUint(val, xOff);
 		checkUint(val, yOff);
 		checkUint(val, zOff);
 		checkUint(val, tempOff);
+		//non-equality comparisons not allowed
 		assert val.length - tempOff >= RECIPROCAL_TEMP_WORDS;
 		if ((val[yOff] & 1) == 0)
 			throw new IllegalArgumentException("Modulus must be odd");
@@ -166,12 +168,13 @@ public final class Int256Math {
 			throw new IllegalArgumentException("Value must be less than modulus");
 		
 		// Extended binary GCD algorithm
-		int aOff = tempOff + 0 * NUM_WORDS;
-		int bOff = tempOff + 1 * NUM_WORDS;
-		int cOff = tempOff + 2 * NUM_WORDS;
-		int dOff = tempOff + 3 * NUM_WORDS;
-		int halfModOff = tempOff + 4 * NUM_WORDS;
-		int oneOff = tempOff + 5 * NUM_WORDS;
+		@Unsigned int aOff = tempOff + 0 * NUM_WORDS;
+		@Unsigned int bOff = tempOff + 1 * NUM_WORDS;
+		@Unsigned int cOff = tempOff + 2 * NUM_WORDS;
+		@Unsigned int dOff = tempOff + 3 * NUM_WORDS;
+		@Unsigned int halfModOff = tempOff + 4 * NUM_WORDS;
+		@Unsigned int oneOff = tempOff + 5 * NUM_WORDS;
+		// Annotation in yhe JDK is needed
 		System.arraycopy(val, yOff, val, aOff, NUM_WORDS);
 		System.arraycopy(val, xOff, val, bOff, NUM_WORDS);
 		System.arraycopy(ZERO, 0,   val, cOff, NUM_WORDS);
@@ -188,8 +191,8 @@ public final class Int256Math {
 			//     d = d % 2 == 0 ? d / 2 : y - (y - d) / 2
 			// }
 			assert (val[aOff] & 1) == 1;
-			int bEven = ~val[bOff] & 1;
-			int dOdd = val[dOff] & 1;
+			@Unsigned int bEven = ~val[bOff] & 1;
+			@Unsigned int dOdd = val[dOff] & 1;
 			uintShiftRight1(val, bOff, bEven, bOff);
 			uintShiftRight1(val, dOff, bEven, dOff);
 			uintAdd(val, dOff, halfModOff, bEven & dOdd, dOff);
@@ -203,12 +206,12 @@ public final class Int256Math {
 			//     b -= a
 			//     d -= c
 			// }
-			int enable = val[bOff] & 1;
-			int doswap = enable & lessThan(val, bOff, aOff);
+			@Unsigned int enable = val[bOff] & 1;
+			@Unsigned int doswap = enable & lessThan(val, bOff, aOff);
 			swap(val, aOff, bOff, doswap);
 			uintSubtract(val, bOff, aOff, enable, bOff);
 			swap(val, cOff, dOff, doswap);
-			int borrow = uintSubtract(val, dOff, cOff, enable, dOff);
+			@Unsigned int borrow = uintSubtract(val, dOff, cOff, enable, dOff);
 			uintAdd(val, dOff, yOff, borrow, dOff);
 		}
 		if ((equalTo(val, aOff, oneOff) | equalTo(val, aOff, yOff)) == 0)  // gcd(x, y) != 1 and x != 0
@@ -218,23 +221,23 @@ public final class Int256Math {
 		System.arraycopy(val, cOff, val, zOff, NUM_WORDS);
 	}
 	
-	public static final int RECIPROCAL_TEMP_WORDS = 6 * NUM_WORDS;
+	public static final @Unsigned int RECIPROCAL_TEMP_WORDS = 6 * NUM_WORDS;
 	
 	
 	/*---- Field arithmetic functions ----*/
 	
 	// Computes z = (x + y) mod prime. Offsets must be multiples of 8 and can overlap.
 	// Requires 8 words of temporary space. Constant-time with respect to both values.
-	public static void fieldAdd(int[] val, int xOff, int yOff, int zOff, int tempOff) {
+	public static void fieldAdd(@Unsigned int[] val, @Unsigned int xOff, @Unsigned int yOff, @Unsigned int zOff, @Unsigned int tempOff) {
 		checkFieldInt(val, xOff);
 		checkFieldInt(val, yOff);
 		checkUint(val, zOff);
 		checkUint(val, tempOff);
 		
-		int c = uintAdd(val, xOff, yOff, 1, zOff);  // Perform addition
+		@Unsigned int c = uintAdd(val, xOff, yOff, 1, zOff);  // Perform addition
 		assert (c >>> 1) == 0;
 		System.arraycopy(FIELD_MODULUS, 0, val, tempOff, NUM_WORDS);
-		int enable = c | (lessThan(val, zOff, tempOff) ^ 1);
+		@Unsigned int enable = c | (lessThan(val, zOff, tempOff) ^ 1);
 		uintSubtract(val, zOff, tempOff, enable, zOff);  // Conditionally subtract modulus
 	}
 	
@@ -243,13 +246,13 @@ public final class Int256Math {
 	
 	// Computes z = (x - y) mod prime. Offsets must be multiples of 8 and can overlap.
 	// Requires 8 words of temporary space. Constant-time with respect to both values.
-	public static void fieldSubtract(int[] val, int xOff, int yOff, int zOff, int tempOff) {
+	public static void fieldSubtract(@Unsigned int[] val, @Unsigned int xOff, @Unsigned int yOff, @Unsigned int zOff, @Unsigned int tempOff) {
 		checkFieldInt(val, xOff);
 		checkFieldInt(val, yOff);
 		checkUint(val, zOff);
 		checkUint(val, tempOff);
 		
-		int b = uintSubtract(val, xOff, yOff, 1, zOff);  // Perform subtraction
+		@Unsigned int b = uintSubtract(val, xOff, yOff, 1, zOff);  // Perform subtraction
 		assert (b >>> 1) == 0;
 		System.arraycopy(FIELD_MODULUS, 0, val, tempOff, NUM_WORDS);
 		uintAdd(val, zOff, tempOff, b, zOff);  // Conditionally add modulus
@@ -260,15 +263,15 @@ public final class Int256Math {
 	
 	// Computes z = (x * 2) mod prime. Offsets must be multiples of 8 and can overlap.
 	// Requires 8 words of temporary space. Constant-time with respect to the value.
-	public static void fieldMultiply2(int[] val, int xOff, int zOff, int tempOff) {
+	public static void fieldMultiply2(@Unsigned int[] val, @Unsigned int xOff, @Unsigned int zOff, @Unsigned int tempOff) {
 		checkFieldInt(val, xOff);
 		checkUint(val, zOff);
 		checkUint(val, tempOff);
 		
-		int c = uintShiftLeft1(val, xOff, zOff);
+		@Unsigned int c = uintShiftLeft1(val, xOff, zOff);
 		assert (c >>> 1) == 0;
 		System.arraycopy(FIELD_MODULUS, 0, val, tempOff, NUM_WORDS);
-		int enable = c | (lessThan(val, zOff, tempOff) ^ 1);
+		@Unsigned int enable = c | (lessThan(val, zOff, tempOff) ^ 1);
 		uintSubtract(val, zOff, tempOff, enable, zOff);  // Conditionally subtract modulus
 	}
 	
@@ -277,18 +280,19 @@ public final class Int256Math {
 	
 	// Computes z = x^2 mod prime. Offsets must be multiples of 8 and can overlap.
 	// Requires 40 words of temporary space. Constant-time with respect to the value.
-	public static void fieldSquare(int[] val, int xOff, int zOff, int tempOff) {
+	public static void fieldSquare(@Unsigned int[] val, @Unsigned int xOff, @Unsigned int zOff, @Unsigned int tempOff) {
 		fieldMultiply(val, xOff, xOff, zOff, tempOff);
 	}
 	
 	
 	// Computes z = (x * y) mod prime. Offsets must be multiples of 8 and can overlap.
 	// Requires 40 words of temporary space. Constant-time with respect to both values.
-	public static void fieldMultiply(int[] val, int xOff, int yOff, int zOff, int tempOff) {
+	public static void fieldMultiply(@Unsigned int[] val, @Unsigned int xOff, @Unsigned int yOff, @Unsigned int zOff, @Unsigned int tempOff) {
 		checkFieldInt(val, xOff);
 		checkFieldInt(val, yOff);
 		checkUint(val, zOff);
 		checkUint(val, tempOff);
+		//Non equality comparisons not allowed on unsigned values
 		assert val.length - tempOff >= FIELD_MULTIPLY_TEMP_WORDS;
 		
 		// Compute raw product of (uint256 x) * (uint256 y) = (uint512 product0), via long multiplication
@@ -359,42 +363,43 @@ public final class Int256Math {
 		}
 		
 		// Final conditional subtraction to yield a FieldInt value
+		// Annotation in the JDK is requrired
 		System.arraycopy(val, differenceOff, val, zOff, NUM_WORDS);
 		System.arraycopy(FIELD_MODULUS, 0, val, tempOff + 2 * NUM_WORDS, NUM_WORDS);  // Reuses space at offset 16
-		int enable = (equalTo(val[differenceOff + NUM_WORDS], 0) & lessThan(val, zOff, tempOff + 2 * NUM_WORDS)) ^ 1;
+		@Unsigned int enable = (equalTo(val[differenceOff + NUM_WORDS], 0) & lessThan(val, zOff, tempOff + 2 * NUM_WORDS)) ^ 1;
 		uintSubtract(val, zOff, tempOff + 2 * NUM_WORDS, enable, zOff);
 	}
 	
-	public static final int FIELD_MULTIPLY_TEMP_WORDS = 5 * NUM_WORDS;
-	public static final int FIELD_SQUARE_TEMP_WORDS = FIELD_MULTIPLY_TEMP_WORDS;
+	public static final @Unsigned int FIELD_MULTIPLY_TEMP_WORDS = 5 * NUM_WORDS;
+	public static final @Unsigned int FIELD_SQUARE_TEMP_WORDS = FIELD_MULTIPLY_TEMP_WORDS;
 	
 	
 	/*---- Miscellaneous functions ----*/
 	
 	// Copies the value y into x iff enable is 1. Offsets must be multiples of 8 and can overlap.
 	// Constant-time with respect to both values and the enable.
-	public static void replace(int[] val, int xOff, int yOff, int enable) {
+	public static void replace(@Unsigned int[] val, @Unsigned int xOff, @Unsigned int yOff, @Unsigned int enable) {
 		checkUint(val, xOff);
 		checkUint(val, yOff);
 		checkEnable(enable);
 		
-		int mask = -enable;
-		for (int i = 0; i < NUM_WORDS; i++)
+		@Unsigned int mask = -enable;
+		for (@Unsigned int i = 0; i < NUM_WORDS; i++)
 			val[xOff + i] = (val[yOff + i] & mask) | (val[xOff + i] & ~mask);
 	}
 	
 	
 	// Swaps the values x and y iff enable is 1. Offsets must be multiples of 8 and can overlap.
 	// Constant-time with respect to both values and the enable.
-	public static void swap(int[] val, int xOff, int yOff, int enable) {
+	public static void swap(@Unsigned int[] val, @Unsigned int xOff, @Unsigned int yOff, @Unsigned int enable) {
 		checkUint(val, xOff);
 		checkUint(val, yOff);
 		checkEnable(enable);
 		
-		int mask = -enable;
+		@Unsigned int mask = -enable;
 		for (int i = 0; i < NUM_WORDS; i++) {
-			int a = val[xOff + i];
-			int b = val[yOff + i];
+			@Unsigned int a = val[xOff + i];
+			@Unsigned int b = val[yOff + i];
 			val[xOff + i] = (b & mask) | (a & ~mask);
 			val[yOff + i] = (a & mask) | (b & ~mask);
 		}
@@ -403,11 +408,11 @@ public final class Int256Math {
 	
 	// Tests x == y and returns 0 or 1. Offsets must be multiples of 8 and can overlap.
 	// Constant-time with respect to both values.
-	public static int equalTo(int[] val, int xOff, int yOff) {
+	public static @Unsigned int equalTo(@Unsigned int[] val, @Unsigned int xOff, @Unsigned int yOff) {
 		checkUint(val, xOff);
 		checkUint(val, yOff);
 		
-		int diff = 0;
+		@Unsigned int diff = 0;
 		for (int i = 0; i < NUM_WORDS; i++)
 			diff |= val[xOff + i] ^ val[yOff + i];
 		return ~(diff | -diff) >>> 31;
@@ -416,17 +421,17 @@ public final class Int256Math {
 	
 	// Tests x < y and returns 0 or 1. Offsets must be multiples of 8 and can overlap.
 	// Constant-time with respect to both values.
-	public static int lessThan(int[] val, int xOff, int yOff) {
+	public static @Unsigned int lessThan(@Unsigned int[] val, @Unsigned int xOff, @Unsigned int yOff) {
 		checkUint(val, xOff);
 		checkUint(val, yOff);
 		
-		int result = 0;  // Always 0 or 1
+		@Unsigned int result = 0;  // Always 0 or 1
 		for (int i = 0; i < NUM_WORDS; i++) {
-			int a = val[xOff + i];
-			int b = val[yOff + i];
-			int neq = a ^ b;
+			@Unsigned int a = val[xOff + i];
+			@Unsigned int b = val[yOff + i];
+			@Unsigned int neq = a ^ b;
 			neq = (neq | -neq) >>> 31;  // 0 or 1
-			int lt = ((~a & b) | ((~a ^ b) & (a - b))) >>> 31;  // 0 or 1
+			@Unsigned int lt = ((~a & b) | ((~a ^ b) & (a - b))) >>> 31;  // 0 or 1
 			result = (~neq & result) | (neq & lt);
 		}
 		return result;
@@ -437,22 +442,22 @@ public final class Int256Math {
 	/*---- Helper functions ----*/
 	
 	// Returns 1 if x == y, otherwise 0. Constant-time with respect to both values.
-	static int equalTo(int x, int y) {
-		int z = x ^ y;
+	static @Unsigned int equalTo(@Unsigned int x, @Unsigned int y) {
+		@Unsigned int z = x ^ y;
 		return ~(z | -z) >>> 31;
 	}
 	
 	
 	// Returns 1 if uint256 x < uint256 y, otherwise 0.
 	// Constant-time with respect to both values.
-	private static int lessThan(int[] x, int xOff, int[] y, int yOff) {
-		int result = 0;
+	private static @Unsigned int lessThan(@Unsigned int[] x, @Unsigned int xOff, @Unsigned int[] y, @Unsigned int yOff) {
+		@Unsigned int result = 0;
 		for (int i = 0; i < NUM_WORDS; i++) {
-			int a = x[xOff + i];
-			int b = y[yOff + i];
-			int neq = a ^ b;
+			@Unsigned int a = x[xOff + i];
+			@Unsigned int b = y[yOff + i];
+			@Unsigned int neq = a ^ b;
 			neq = (neq | -neq) >>> 31;
-			int lt = ((~a & b) | ((~a ^ b) & (a - b))) >>> 31;
+			@Unsigned int lt = ((~a & b) | ((~a ^ b) & (a - b))) >>> 31;
 			result = (~neq & result) | (neq & lt);
 		}
 		return result;
@@ -460,24 +465,25 @@ public final class Int256Math {
 	
 	
 	// Returns 1 if uint256 x == 0, otherwise 0. Constant-time with respect to the value.
-	static int isZero(int[] val, int xOff) {
+	static @Unsigned int isZero(@Unsigned int[] val, @Unsigned int xOff) {
 		Int256Math.checkUint(val, xOff);
-		int result = 0;
+		@Unsigned int result = 0;
 		for (int i = 0; i < NUM_WORDS; i++)
 			result |= val[xOff + i];
 		return ~(result | -result) >>> 31;
 	}
 	
 	
-	static void checkEnable(int en) {
+	static void checkEnable(@Unsigned int en) {
 		assert (en >>> 1) == 0;
 	}
 	
-	static void checkUint(int[] arr, int off) {
+	static void checkUint(@Unsigned int[] arr, @Unsigned int off) {
+		//Non equality comparisons not allowed on unsigned values
 		assert off >= 0 && (off & 7) == 0 && arr.length - off >= NUM_WORDS;
 	}
 	
-	static void checkFieldInt(int[] arr, int off) {
+	static void checkFieldInt(@Unsigned int[] arr, @Unsigned int off) {
 		checkUint(arr, off);
 		assert lessThan(arr, off, FIELD_MODULUS, 0) == 1;
 	}
@@ -487,8 +493,8 @@ public final class Int256Math {
 	
 	private static final long LONG_MASK = 0xFFFFFFFFL;
 	
-	static final int[] ZERO = {0, 0, 0, 0, 0, 0, 0, 0};
-	static final int[] ONE  = {1, 0, 0, 0, 0, 0, 0, 0};
-	static final int[] FIELD_MODULUS = {0xFFFFFC2F, 0xFFFFFFFE, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
+	static final @Unsigned int[] ZERO = {0, 0, 0, 0, 0, 0, 0, 0};
+	static final @Unsigned int[] ONE  = {1, 0, 0, 0, 0, 0, 0, 0};
+	static final @Unsigned int[] FIELD_MODULUS = {0xFFFFFC2F, 0xFFFFFFFE, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
 	
 }

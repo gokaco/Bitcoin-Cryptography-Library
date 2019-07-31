@@ -8,6 +8,7 @@
 
 package io.nayuki.bitcoin.crypto;
 
+import org.checkerframework.checker.signedness.qual.*;
 import static java.lang.Long.rotateLeft;
 import java.util.Objects;
 
@@ -30,9 +31,9 @@ public final class Keccak256 {
 	 * @return a 32-byte array representing the message's Keccak-256 hash
 	 * @throws NullPointerException if the message is {@code null}
 	 */
-	public static byte[] getHash(byte[] msg) {
+	public static @Unsigned byte[] getHash(byte[] msg) {
 		Objects.requireNonNull(msg);
-		long[] state = new long[25];
+		@Unsigned long[] state = new long[25];
 		
 		// XOR each message byte into the state, and absorb full blocks
 		int blockOff = 0;
@@ -52,7 +53,7 @@ public final class Keccak256 {
 		absorb(state);
 		
 		// Int64 array to bytes in little endian
-		byte[] result = new byte[HASH_LEN];
+		@Unsigned byte[] result = new byte[HASH_LEN];
 		for (int i = 0; i < result.length; i++)
 			result[i] = (byte)(state[i / 8] >>> (i % 8 * 8));
 		return result;
@@ -61,25 +62,25 @@ public final class Keccak256 {
 	
 	/*---- Private functions ----*/
 	
-	private static void absorb(long[] state) {
-		long a00 = state[ 0], a01 = state[ 1], a02 = state[ 2], a03 = state[ 3], a04 = state[ 4];
-		long a05 = state[ 5], a06 = state[ 6], a07 = state[ 7], a08 = state[ 8], a09 = state[ 9];
-		long a10 = state[10], a11 = state[11], a12 = state[12], a13 = state[13], a14 = state[14];
-		long a15 = state[15], a16 = state[16], a17 = state[17], a18 = state[18], a19 = state[19];
-		long a20 = state[20], a21 = state[21], a22 = state[22], a23 = state[23], a24 = state[24];
+	private static void absorb(@Unsigned long[] state) {
+		@Unsigned long a00 = state[ 0], a01 = state[ 1], a02 = state[ 2], a03 = state[ 3], a04 = state[ 4];
+		@Unsigned long a05 = state[ 5], a06 = state[ 6], a07 = state[ 7], a08 = state[ 8], a09 = state[ 9];
+		@Unsigned long a10 = state[10], a11 = state[11], a12 = state[12], a13 = state[13], a14 = state[14];
+		@Unsigned long a15 = state[15], a16 = state[16], a17 = state[17], a18 = state[18], a19 = state[19];
+		@Unsigned long a20 = state[20], a21 = state[21], a22 = state[22], a23 = state[23], a24 = state[24];
 		
-		for (long rc : ROUND_CONSTANTS) {
+		for (@Unsigned long rc : ROUND_CONSTANTS) {
 			// Theta step
-			long c0 = a00 ^ a05 ^ a10 ^ a15 ^ a20;
-			long c1 = a01 ^ a06 ^ a11 ^ a16 ^ a21;
-			long c2 = a02 ^ a07 ^ a12 ^ a17 ^ a22;
-			long c3 = a03 ^ a08 ^ a13 ^ a18 ^ a23;
-			long c4 = a04 ^ a09 ^ a14 ^ a19 ^ a24;
-			long d0 = c4 ^ rotateLeft(c1, 1);
-			long d1 = c0 ^ rotateLeft(c2, 1);
-			long d2 = c1 ^ rotateLeft(c3, 1);
-			long d3 = c2 ^ rotateLeft(c4, 1);
-			long d4 = c3 ^ rotateLeft(c0, 1);
+			@Unsigned long c0 = a00 ^ a05 ^ a10 ^ a15 ^ a20;
+			@Unsigned long c1 = a01 ^ a06 ^ a11 ^ a16 ^ a21;
+			@Unsigned long c2 = a02 ^ a07 ^ a12 ^ a17 ^ a22;
+			@Unsigned long c3 = a03 ^ a08 ^ a13 ^ a18 ^ a23;
+			@Unsigned long c4 = a04 ^ a09 ^ a14 ^ a19 ^ a24;
+			@Unsigned long d0 = c4 ^ rotateLeft(c1, 1);
+			@Unsigned long d1 = c0 ^ rotateLeft(c2, 1);
+			@Unsigned long d2 = c1 ^ rotateLeft(c3, 1);
+			@Unsigned long d3 = c2 ^ rotateLeft(c4, 1);
+			@Unsigned long d4 = c3 ^ rotateLeft(c0, 1);
 			a00 ^= d0;  a05 ^= d0;  a10 ^= d0;  a15 ^= d0;  a20 ^= d0;
 			a01 ^= d1;  a06 ^= d1;  a11 ^= d1;  a16 ^= d1;  a21 ^= d1;
 			a02 ^= d2;  a07 ^= d2;  a12 ^= d2;  a17 ^= d2;  a22 ^= d2;
@@ -87,31 +88,31 @@ public final class Keccak256 {
 			a04 ^= d4;  a09 ^= d4;  a14 ^= d4;  a19 ^= d4;  a24 ^= d4;
 			
 			// Rho and pi steps
-			long b00 = rotateLeft(a00,  0);
-			long b16 = rotateLeft(a05, 36);
-			long b07 = rotateLeft(a10,  3);
-			long b23 = rotateLeft(a15, 41);
-			long b14 = rotateLeft(a20, 18);
-			long b10 = rotateLeft(a01,  1);
-			long b01 = rotateLeft(a06, 44);
-			long b17 = rotateLeft(a11, 10);
-			long b08 = rotateLeft(a16, 45);
-			long b24 = rotateLeft(a21,  2);
-			long b20 = rotateLeft(a02, 62);
-			long b11 = rotateLeft(a07,  6);
-			long b02 = rotateLeft(a12, 43);
-			long b18 = rotateLeft(a17, 15);
-			long b09 = rotateLeft(a22, 61);
-			long b05 = rotateLeft(a03, 28);
-			long b21 = rotateLeft(a08, 55);
-			long b12 = rotateLeft(a13, 25);
-			long b03 = rotateLeft(a18, 21);
-			long b19 = rotateLeft(a23, 56);
-			long b15 = rotateLeft(a04, 27);
-			long b06 = rotateLeft(a09, 20);
-			long b22 = rotateLeft(a14, 39);
-			long b13 = rotateLeft(a19,  8);
-			long b04 = rotateLeft(a24, 14);
+			@Unsigned long b00 = rotateLeft(a00,  0);
+			@Unsigned long b16 = rotateLeft(a05, 36);
+			@Unsigned long b07 = rotateLeft(a10,  3);
+			@Unsigned long b23 = rotateLeft(a15, 41);
+			@Unsigned long b14 = rotateLeft(a20, 18);
+			@Unsigned long b10 = rotateLeft(a01,  1);
+			@Unsigned long b01 = rotateLeft(a06, 44);
+			@Unsigned long b17 = rotateLeft(a11, 10);
+			@Unsigned long b08 = rotateLeft(a16, 45);
+			@Unsigned long b24 = rotateLeft(a21,  2);
+			@Unsigned long b20 = rotateLeft(a02, 62);
+			@Unsigned long b11 = rotateLeft(a07,  6);
+			@Unsigned long b02 = rotateLeft(a12, 43);
+			@Unsigned long b18 = rotateLeft(a17, 15);
+			@Unsigned long b09 = rotateLeft(a22, 61);
+			@Unsigned long b05 = rotateLeft(a03, 28);
+			@Unsigned long b21 = rotateLeft(a08, 55);
+			@Unsigned long b12 = rotateLeft(a13, 25);
+			@Unsigned long b03 = rotateLeft(a18, 21);
+			@Unsigned long b19 = rotateLeft(a23, 56);
+			@Unsigned long b15 = rotateLeft(a04, 27);
+			@Unsigned long b06 = rotateLeft(a09, 20);
+			@Unsigned long b22 = rotateLeft(a14, 39);
+			@Unsigned long b13 = rotateLeft(a19,  8);
+			@Unsigned long b04 = rotateLeft(a24, 14);
 			
 			// Chi step
 			a00 = b00 ^ (~b01 & b02) ^ rc;  // Iota step
@@ -151,7 +152,7 @@ public final class Keccak256 {
 	
 	/*---- Class constants ----*/
 	
-	private static final long[] ROUND_CONSTANTS = {
+	private static final @Unsigned long[] ROUND_CONSTANTS = {
 		0x0000000000000001L, 0x0000000000008082L, 0x800000000000808AL, 0x8000000080008000L,
 		0x000000000000808BL, 0x0000000080000001L, 0x8000000080008081L, 0x8000000000008009L,
 		0x000000000000008AL, 0x0000000000000088L, 0x0000000080008009L, 0x000000008000000AL,

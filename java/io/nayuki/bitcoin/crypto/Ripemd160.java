@@ -12,6 +12,7 @@ import static java.lang.Integer.rotateLeft;
 import java.util.Arrays;
 import java.util.Objects;
 
+import org.checkerframework.checker.signedness.qual.*;
 
 /**
  * Computes the RIPEMD-160 hash of an array of bytes. Not instantiable.
@@ -31,18 +32,20 @@ public final class Ripemd160 {
 	 * @return a 20-byte array representing the message's RIPEMD-160 hash
 	 * @throws NullPointerException if the message is {@code null}
 	 */
-	public static byte[] getHash(byte[] msg) {
+	public static @Unsigned byte[] getHash(@Unsigned byte[] msg) {
 		// Compress whole message blocks
 		Objects.requireNonNull(msg);
-		int[] state = {0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0};
+		@Unsigned int[] state = {0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0};
 		int off = msg.length / BLOCK_LEN * BLOCK_LEN;
 		compress(state, msg, off);
 		
 		// Final blocks, padding, and length
-		byte[] block = new byte[BLOCK_LEN];
+		@Unsigned byte[] block = new byte[BLOCK_LEN];
 		System.arraycopy(msg, off, block, 0, msg.length - off);
 		off = msg.length % block.length;
-		block[off] = (byte)0x80;
+		@SuppressWarnings("value")
+		@Unsigned byte b=(byte)0x80;
+		block[off] = b;
 		off++;
 		if (off + 8 > block.length) {
 			compress(state, block, block.length);
@@ -54,7 +57,7 @@ public final class Ripemd160 {
 		compress(state, block, block.length);
 		
 		// Int32 array to bytes in little endian
-		byte[] result = new byte[state.length * 4];
+		@Unsigned byte[] result = new byte[state.length * 4];
 		for (int i = 0; i < result.length; i++)
 			result[i] = (byte)(state[i / 4] >>> (i % 4 * 8));
 		return result;
@@ -64,24 +67,24 @@ public final class Ripemd160 {
 	
 	/*---- Private functions ----*/
 	
-	private static void compress(int[] state, byte[] blocks, int len) {
+	private static void compress(@Unsigned int[] state, @Unsigned byte[] blocks, int len) {
 		if (len % BLOCK_LEN != 0)
 			throw new IllegalArgumentException();
 		for (int i = 0; i < len; i += BLOCK_LEN) {
 			
 			// Message schedule
-			int[] schedule = new int[16];
+			@Unsigned int[] schedule = new int[16];
 			for (int j = 0; j < BLOCK_LEN; j++)
 				schedule[j / 4] |= (blocks[i + j] & 0xFF) << (j % 4 * 8);
 			
 			// The 80 rounds
-			int al = state[0], ar = state[0];
-			int bl = state[1], br = state[1];
-			int cl = state[2], cr = state[2];
-			int dl = state[3], dr = state[3];
-			int el = state[4], er = state[4];
+			@Unsigned int al = state[0], ar = state[0];
+			@Unsigned int bl = state[1], br = state[1];
+			@Unsigned int cl = state[2], cr = state[2];
+			@Unsigned int dl = state[3], dr = state[3];
+			@Unsigned int el = state[4], er = state[4];
 			for (int j = 0; j < 80; j++) {
-				int temp;
+				@Unsigned int temp;
 				temp = rotateLeft(al + f(j, bl, cl, dl) + schedule[RL[j]] + KL[j / 16], SL[j]) + el;
 				al = el;
 				el = dl;
@@ -95,7 +98,7 @@ public final class Ripemd160 {
 				cr = br;
 				br = temp;
 			}
-			int temp = state[1] + cl + dr;
+			@Unsigned int temp = state[1] + cl + dr;
 			state[1] = state[2] + dl + er;
 			state[2] = state[3] + el + ar;
 			state[3] = state[4] + al + br;
@@ -105,7 +108,7 @@ public final class Ripemd160 {
 	}
 	
 	
-	private static int f(int i, int x, int y, int z) {
+	private static @Unsigned int f(int i, @Unsigned int x, @Unsigned int y, @Unsigned int z) {
 		assert 0 <= i && i < 80;
 		if (i < 16) return x ^ y ^ z;
 		if (i < 32) return (x & y) | (~x & z);
@@ -117,8 +120,8 @@ public final class Ripemd160 {
 	
 	/*---- Class constants ----*/
 	
-	private static final int[] KL = {0x00000000, 0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xA953FD4E};  // Round constants for left line
-	private static final int[] KR = {0x50A28BE6, 0x5C4DD124, 0x6D703EF3, 0x7A6D76E9, 0x00000000};  // Round constants for right line
+	private static final @Unsigned int[] KL = {0x00000000, 0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xA953FD4E};  // Round constants for left line
+	private static final @Unsigned int[] KR = {0x50A28BE6, 0x5C4DD124, 0x6D703EF3, 0x7A6D76E9, 0x00000000};  // Round constants for right line
 	
 	private static final int[] RL = {  // Message schedule for left line
 		 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,

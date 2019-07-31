@@ -12,6 +12,7 @@ import static java.lang.Long.rotateRight;
 import java.util.Arrays;
 import java.util.Objects;
 
+import org.checkerframework.checker.signedness.qual.*;
 
 /**
  * Computes the SHA-512 hash or HMAC of an array of bytes. Not instantiable.
@@ -31,20 +32,22 @@ public final class Sha512 {
 	 * @return a 64-byte array representing the message's SHA-512 hash
 	 * @throws NullPointerException if the message is {@code null}
 	 */
-	public static byte[] getHash(byte[] msg) {
+	public static @Unsigned byte[] getHash(@Unsigned byte[] msg) {
 		// Compress whole message blocks
 		Objects.requireNonNull(msg);
-		long[] state = {
+		@Unsigned long[] state = {
 			0x6A09E667F3BCC908L, 0xBB67AE8584CAA73BL, 0x3C6EF372FE94F82BL, 0xA54FF53A5F1D36F1L,
 			0x510E527FADE682D1L, 0x9B05688C2B3E6C1FL, 0x1F83D9ABFB41BD6BL, 0x5BE0CD19137E2179L};
 		int off = msg.length / BLOCK_LEN * BLOCK_LEN;
 		compress(state, msg, off);
 		
 		// Final blocks, padding, and length
-		byte[] block = new byte[BLOCK_LEN];
+		@Unsigned byte[] block = new byte[BLOCK_LEN];
 		System.arraycopy(msg, off, block, 0, msg.length - off);
 		off = msg.length % block.length;
-		block[off] = (byte)0x80;
+		@SuppressWarnings("value")
+		@Unsigned byte b= (byte)0x80;
+		block[off] = b;
 		off++;
 		if (off + 16 > block.length) {
 			compress(state, block, block.length);
@@ -56,7 +59,7 @@ public final class Sha512 {
 		compress(state, block, block.length);
 		
 		// Int64 array to bytes in big endian
-		byte[] result = new byte[state.length * 8];
+		@Unsigned byte[] result = new byte[state.length * 8];
 		for (int i = 0; i < result.length; i++)
 			result[i] = (byte)(state[i / 8] >>> ((7 - i % 8) * 8));
 		return result;
@@ -72,7 +75,7 @@ public final class Sha512 {
 	 * @throws NullPointerException if the key or message is {@code null}
 	 * @return a 64-byte array representing the HMAC value
 	 */
-	public static byte[] getHmac(byte[] key, byte[] msg) {
+	public static @Unsigned byte[] getHmac(@Unsigned byte[] key, byte[] msg) {
 		Objects.requireNonNull(key);
 		Objects.requireNonNull(msg);
 		if (key.length > BLOCK_LEN)
@@ -82,13 +85,13 @@ public final class Sha512 {
 		if (key.length != BLOCK_LEN)
 			throw new AssertionError();
 		
-		byte[] innerMsg = new byte[BLOCK_LEN + msg.length];
+		@Unsigned byte[] innerMsg = new byte[BLOCK_LEN + msg.length];
 		for (int i = 0; i < key.length; i++)
 			innerMsg[i] = (byte)(key[i] ^ 0x36);
 		System.arraycopy(msg, 0, innerMsg, BLOCK_LEN, msg.length);
-		byte[] innerHash = getHash(innerMsg);
+		@Unsigned byte[] innerHash = getHash(innerMsg);
 		
-		byte[] outerMsg = new byte[BLOCK_LEN + innerHash.length];
+		@Unsigned byte[] outerMsg = new byte[BLOCK_LEN + innerHash.length];
 		for (int i = 0; i < key.length; i++)
 			outerMsg[i] = (byte)(key[i] ^ 0x5C);
 		System.arraycopy(innerHash, 0, outerMsg, BLOCK_LEN, innerHash.length);
@@ -99,13 +102,13 @@ public final class Sha512 {
 	
 	/*---- Private functions ----*/
 	
-	private static void compress(long[] state, byte[] blocks, int len) {
+	private static void compress(@Unsigned long[] state, @Unsigned byte[] blocks, int len) {
 		if (len < 0 || len % BLOCK_LEN != 0)
 			throw new IllegalArgumentException();
 		for (int i = 0; i < len; i += BLOCK_LEN) {
 			
 			// Message schedule
-			long[] schedule = new long[80];
+			@Unsigned long[] schedule = new long[80];
 			for (int j = 0; j < BLOCK_LEN; j++)
 				schedule[j / 8] |= (blocks[i + j] & 0xFFL) << ((7 - j % 8) * 8);
 			for (int j = 16; j < 80; j++) {
@@ -115,17 +118,17 @@ public final class Sha512 {
 			}
 			
 			// The 80 rounds
-			long a = state[0];
-			long b = state[1];
-			long c = state[2];
-			long d = state[3];
-			long e = state[4];
-			long f = state[5];
-			long g = state[6];
-			long h = state[7];
+			@Unsigned long a = state[0];
+			@Unsigned long b = state[1];
+			@Unsigned long c = state[2];
+			@Unsigned long d = state[3];
+			@Unsigned long e = state[4];
+			@Unsigned long f = state[5];
+			@Unsigned long g = state[6];
+			@Unsigned long h = state[7];
 			for (int j = 0; j < 80; j++) {
-				long t1 = h + (rotateRight(e, 14) ^ rotateRight(e, 18) ^ rotateRight(e, 41)) + (g ^ (e & (f ^ g))) + ROUND_CONSTANTS[j] + schedule[j];
-				long t2 = (rotateRight(a, 28) ^ rotateRight(a, 34) ^ rotateRight(a, 39)) + ((a & (b | c)) | (b & c));
+				@Unsigned long t1 = h + (rotateRight(e, 14) ^ rotateRight(e, 18) ^ rotateRight(e, 41)) + (g ^ (e & (f ^ g))) + ROUND_CONSTANTS[j] + schedule[j];
+				@Unsigned long t2 = (rotateRight(a, 28) ^ rotateRight(a, 34) ^ rotateRight(a, 39)) + ((a & (b | c)) | (b & c));
 				h = g;
 				g = f;
 				f = e;
@@ -135,21 +138,21 @@ public final class Sha512 {
 				b = a;
 				a = t1 + t2;
 			}
-			state[0] += a;
-			state[1] += b;
-			state[2] += c;
-			state[3] += d;
-			state[4] += e;
-			state[5] += f;
-			state[6] += g;
-			state[7] += h;
+			state[0] += state[0] +a;
+			state[1] += state[1] +b;
+			state[2] += state[2] +c;
+			state[3] += state[3] +d;
+			state[4] += state[4] +e;
+			state[5] += state[5] +f;
+			state[6] += state[6] +g;
+			state[7] += state[7] +h;
 		}
 	}
 	
 	
 	/*---- Class constants ----*/
 	
-	private static final long[] ROUND_CONSTANTS = {
+	private static final @Unsigned long[] ROUND_CONSTANTS = {
 		0x428A2F98D728AE22L, 0x7137449123EF65CDL, 0xB5C0FBCFEC4D3B2FL, 0xE9B5DBA58189DBBCL,
 		0x3956C25BF348B538L, 0x59F111F1B605D019L, 0x923F82A4AF194F9BL, 0xAB1C5ED5DA6D8118L,
 		0xD807AA98A3030242L, 0x12835B0145706FBEL, 0x243185BE4EE4B28CL, 0x550C7DC3D5FFB4E2L,

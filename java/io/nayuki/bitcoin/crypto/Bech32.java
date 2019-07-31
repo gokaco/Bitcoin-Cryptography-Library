@@ -9,6 +9,7 @@
 package io.nayuki.bitcoin.crypto;
 
 import java.io.ByteArrayOutputStream;
+import org.checkerframework.checker.signedness.qual.*;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
@@ -98,7 +99,7 @@ public final class Bech32 {
 	 */
 	public static Object[] bech32ToSegwit(String s) {
 		Object[] decoded = bech32ToBitGroups(s);
-		byte[] data = (byte[])decoded[1];
+		@Unsigned byte[] data = (@Unsigned byte[])decoded[1];
 		
 		// Extract leading value representing version
 		if (data.length < 1)
@@ -108,7 +109,7 @@ public final class Bech32 {
 			throw new IllegalArgumentException("Invalid witness version");
 		
 		// Initialize output array
-		byte[] witProg = new byte[(data.length - 1) * 5 / 8];  // Discard version prefix and padding suffix
+		@Unsigned byte[] witProg = new byte[(data.length - 1) * 5 / 8];  // Discard version prefix and padding suffix
 		if (witProg.length < 2 || witProg.length > 40)
 			throw new IllegalArgumentException("Invalid witness program length");
 		
@@ -116,12 +117,12 @@ public final class Bech32 {
 		final int IN_BITS = 5;
 		final int OUT_BITS = 8;
 		int outputIndex = 0;
-		int bitBuffer = 0;  // Topmost bitBufferLen bits are valid; remaining lower bits are zero
+		@Unsigned int bitBuffer = 0;  // Topmost bitBufferLen bits are valid; remaining lower bits are zero
 		int bitBufferLen = 0;  // Always in the range [0, 10]
 		
 		// Repack all 5-bit groups into 8-bit bytes, discarding padding
 		for (int i = 1; i < data.length; i++) {
-			int b = data[i];
+			@Unsigned int b = data[i];
 			assert 0 <= bitBufferLen && bitBufferLen <= IN_BITS * 2;
 			assert (bitBuffer << bitBufferLen) == 0;
 			
@@ -160,13 +161,15 @@ public final class Bech32 {
 	 * @throws IllegalArgumentException if any argument violates the stated
 	 * preconditions, or {@code humanPart.length() + data.length > 83}
 	 */
-	public static String bitGroupsToBech32(String humanPart, byte[] data) {
+	public static String bitGroupsToBech32(String humanPart, @Unsigned byte[] data) {
 		// Check arguments
 		Objects.requireNonNull(humanPart);
 		Objects.requireNonNull(data);
-		char[] human = humanPart.toCharArray();
+		// toCharArray() needs to be annotated in the JDK 
+		@SuppressWarnings("signedness")
+		@Unsigned char[] human = humanPart.toCharArray();
 		checkHumanReadablePart(human);
-		for (byte b : data) {
+		for (@Unsigned byte b : data) {
 			if ((b >>> 5) != 0)
 				throw new IllegalArgumentException("Expected 5-bit groups");
 		}
@@ -174,7 +177,7 @@ public final class Bech32 {
 			throw new IllegalArgumentException("Output too long");
 		
 		// Compute checksum
-		int checksum;
+		@Unsigned int checksum;
 		try {
 			ByteArrayOutputStream temp = expandHumanReadablePart(human);  // Every element is uint5
 			temp.write(data);
@@ -238,7 +241,9 @@ public final class Bech32 {
 			humanPart = s.substring(0, i);
 			s = s.substring(i + 1);
 		}
-		char[] human = humanPart.toCharArray();
+		// toCharArray() needs to be annotated in the JDK 
+		@SuppressWarnings("signedness")
+		@Unsigned char[] human = humanPart.toCharArray();
 		checkHumanReadablePart(human);
 		
 		// Decode from base-32
@@ -272,15 +277,18 @@ public final class Bech32 {
 	// * It contains non-ASCII characters outside the range [33, 126].
 	// * It contains uppercase characters.
 	// Otherwise returns silently.
-	static void checkHumanReadablePart(char[] s) {
+	static void checkHumanReadablePart(@Unsigned char[] s) {
 		int n = s.length;
 		if (n < 1 || n > 83)
 			throw new IllegalArgumentException("Invalid length of human-readable part string");
 		
-		for (char c : s) {
-			if (c < 33 || c > 126)
+		for (@Unsigned char c : s) {
+			//We cannot perform comparisons on unsigned values
+			@SuppressWarnings("signedness")
+			char p=c;
+			if (p < 33 || p > 126)
 				throw new IllegalArgumentException("Invalid character in human-readable part string");
-			if ('A' <= c && c <= 'Z')
+			if ('A' <= p && p <= 'Z')
 				throw new IllegalArgumentException("Human-readable part string must be lowercase");
 		}
 	}
@@ -288,23 +296,28 @@ public final class Bech32 {
 	
 	// Returns a new byte buffer containing uint5 values, representing the given string
 	// expanded into the prefix data for the purpose of computing/verifying a checksum.
-	private static ByteArrayOutputStream expandHumanReadablePart(char[] s) {
+	private static ByteArrayOutputStream expandHumanReadablePart(@Unsigned char[] s) {
 		ByteArrayOutputStream result = new ByteArrayOutputStream();  // Every element is uint5
-		for (char c : s)
+		for (@Unsigned char c : s){
+			//Annotation needed in the JDK
 			result.write(c >>> 5);  // uint3 from high bits
+		}
 		result.write(0);
-		for (char c : s)
+		for (@Unsigned char c : s)
 			result.write(c & 0x1F);  // uint5 from low bits
 		return result;
 	}
 	
 	
 	// Computes the polynomial remainder of the given sequence of 5-bit groups. The result is a uint30.
-	private static int polymod(byte[] data) {
-		int result = 1;
-		for (byte b : data) {
-			assert 0 <= b && b < 32;  // uint5
-			int x = result >>> 25;
+	private static @Unsigned int polymod(@Unsigned byte[] data) {
+		@Unsigned int result = 1;
+		for (@Unsigned byte b : data) {
+			//We cannot perform comparisons on unsigned values
+			@SuppressWarnings("signedness")
+			byte c = b;
+			assert 0 <= c && c < 32;  // uint5
+			@Unsigned int x = result >>> 25;
 			result = ((result & ((1 << 25) - 1)) << 5) | b;
 			for (int i = 0; i < GENERATOR.length; i++)
 				result ^= ((x >>> i) & 1) * GENERATOR[i];
@@ -321,7 +334,7 @@ public final class Bech32 {
 	private static final String ALPHABET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 	
 	// For computing/verifying checksums. Each element is a uint30.
-	private static final int[] GENERATOR = {0x3B6A57B2, 0x26508E6D, 0x1EA119FA, 0x3D4233DD, 0x2A1462B3};
+	private static final @Unsigned int[] GENERATOR = {0x3B6A57B2, 0x26508E6D, 0x1EA119FA, 0x3D4233DD, 0x2A1462B3};
 	
 	// Number of uint5 groups. Do not modify.
 	private static final int CHECKSUM_LEN = 6;

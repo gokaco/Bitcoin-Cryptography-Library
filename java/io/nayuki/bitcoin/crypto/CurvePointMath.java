@@ -9,6 +9,7 @@
 package io.nayuki.bitcoin.crypto;
 
 import static io.nayuki.bitcoin.crypto.Int256Math.NUM_WORDS;
+import org.checkerframework.checker.signedness.qual.*;
 import java.util.Arrays;
 
 
@@ -21,14 +22,14 @@ public final class CurvePointMath {
 	
 	/*---- Critical class constants ----*/
 	
-	static final int POINT_WORDS = 3 * NUM_WORDS;
+	static final @Unsigned int POINT_WORDS = 3 * NUM_WORDS;
 	
 	
 	/*---- Arithmetic functions ----*/
 	
 	// Doubles the given curve point. Requires 64 words of temporary space.
 	// The resulting point is usually not normalized. Constant-time with respect to the point.
-	public static void twice(int[] val, int pOff, int tempOff) {
+	public static void twice(@Unsigned int[] val, @Unsigned int pOff, @Unsigned int tempOff) {
 		/* 
 		 * (See https://www.nayuki.io/page/elliptic-curve-point-addition-in-projective-coordinates)
 		 * Algorithm pseudocode:
@@ -48,26 +49,27 @@ public final class CurvePointMath {
 		
 		checkPoint(val, pOff);
 		Int256Math.checkUint(val, tempOff);
+		//Comparisons on unsigned value not allowed
 		assert val.length - tempOff >= TWICE_TEMP_WORDS;
 		
-		int zeroResult = CurvePointMath.isZero(val, pOff) | Int256Math.isZero(val, pOff + YCOORD);
-		int newTempOff = tempOff + 3 * NUM_WORDS;
+		@Unsigned int zeroResult = CurvePointMath.isZero(val, pOff) | Int256Math.isZero(val, pOff + YCOORD);
+		@Unsigned int newTempOff = tempOff + 3 * NUM_WORDS;
 		
-		int uOff = tempOff + 0 * NUM_WORDS;
+		@Unsigned int uOff = tempOff + 0 * NUM_WORDS;
 		Int256Math.fieldMultiply(val, pOff + YCOORD, pOff + ZCOORD, uOff, newTempOff);
 		Int256Math.fieldMultiply2(val, uOff, uOff, newTempOff);
 		
-		int vOff = tempOff + 1 * NUM_WORDS;
+		@Unsigned int vOff = tempOff + 1 * NUM_WORDS;
 		Int256Math.fieldMultiply(val, uOff, pOff + XCOORD, vOff, newTempOff);
 		Int256Math.fieldMultiply(val, vOff, pOff + YCOORD, vOff, newTempOff);
 		Int256Math.fieldMultiply2(val, vOff, vOff, newTempOff);
 		
 		Int256Math.fieldSquare(val, pOff + XCOORD, pOff + XCOORD, newTempOff);
-		int tOff = tempOff + 2 * NUM_WORDS;
+		@Unsigned int tOff = tempOff + 2 * NUM_WORDS;
 		Int256Math.fieldMultiply2(val, pOff + XCOORD, tOff, newTempOff);
 		Int256Math.fieldAdd(val, tOff, pOff + XCOORD, tOff, newTempOff);
 		
-		int wOff = pOff + ZCOORD;  // Reuses space
+		@Unsigned int wOff = pOff + ZCOORD;  // Reuses space
 		Int256Math.fieldSquare(val, tOff, wOff, newTempOff);
 		Int256Math.fieldMultiply2(val, vOff, pOff + XCOORD, newTempOff);
 		Int256Math.fieldSubtract(val, wOff, pOff + XCOORD, wOff, newTempOff);
@@ -88,12 +90,12 @@ public final class CurvePointMath {
 		CurvePointMath.replace(val, pOff, tempOff, zeroResult);
 	}
 	
-	public static final int TWICE_TEMP_WORDS = 3 * NUM_WORDS + Int256Math.FIELD_MULTIPLY_TEMP_WORDS;
+	public static final @Unsigned int TWICE_TEMP_WORDS = 3 * NUM_WORDS + Int256Math.FIELD_MULTIPLY_TEMP_WORDS;
 	
 	
 	// Adds the point q into point p. Requires 112 words of temporary space.
 	// The resulting point is usually not normalized. Constant-time with respect to both points.
-	public static void add(int[] val, int pOff, int qOff, int tempOff) {
+	public static void add(@Unsigned int[] val, @Unsigned int pOff, @Unsigned int qOff, @Unsigned int tempOff) {
 		/* 
 		 * (See https://www.nayuki.io/page/elliptic-curve-point-addition-in-projective-coordinates)
 		 * Algorithm pseudocode:
@@ -130,38 +132,38 @@ public final class CurvePointMath {
 		Int256Math.checkUint(val, tempOff);
 		assert val.length - tempOff >= ADD_TEMP_WORDS;
 		
-		int pIsZero = CurvePointMath.isZero(val, pOff);
-		int qIsZero = CurvePointMath.isZero(val, qOff);
-		int rOff = tempOff + 0 * NUM_WORDS;
+		@Unsigned int pIsZero = CurvePointMath.isZero(val, pOff);
+		@Unsigned int qIsZero = CurvePointMath.isZero(val, qOff);
+		@Unsigned int rOff = tempOff + 0 * NUM_WORDS;
 		System.arraycopy(val, pOff, val, rOff, POINT_WORDS);
 		CurvePointMath.twice(val, rOff, tempOff + POINT_WORDS);
 		CurvePointMath.replace(val, rOff, pOff, qIsZero);
 		CurvePointMath.replace(val, rOff, qOff, pIsZero);
 		
-		int newTempOff = tempOff + 9 * NUM_WORDS;
-		int u0Off = tempOff + 3 * NUM_WORDS;
-		int u1Off = tempOff + 4 * NUM_WORDS;
-		int t0Off = tempOff + 5 * NUM_WORDS;
-		int t1Off = pOff + XCOORD;  // Reuses space
+		@Unsigned int newTempOff = tempOff + 9 * NUM_WORDS;
+		@Unsigned int u0Off = tempOff + 3 * NUM_WORDS;
+		@Unsigned int u1Off = tempOff + 4 * NUM_WORDS;
+		@Unsigned int t0Off = tempOff + 5 * NUM_WORDS;
+		@Unsigned int t1Off = pOff + XCOORD;  // Reuses space
 		Int256Math.fieldMultiply(val, pOff + XCOORD, qOff + ZCOORD, u0Off, newTempOff);
 		Int256Math.fieldMultiply(val, qOff + XCOORD, pOff + ZCOORD, u1Off, newTempOff);
 		Int256Math.fieldMultiply(val, pOff + YCOORD, qOff + ZCOORD, t0Off, newTempOff);
 		Int256Math.fieldMultiply(val, qOff + YCOORD, pOff + ZCOORD, t1Off, newTempOff);
-		int sameX = Int256Math.equalTo(val, u0Off, u1Off);
-		int sameY = Int256Math.equalTo(val, t0Off, t1Off);
+		@Unsigned int sameX = Int256Math.equalTo(val, u0Off, u1Off);
+		@Unsigned int sameY = Int256Math.equalTo(val, t0Off, t1Off);
 		System.arraycopy(ZERO_POINT, 0, val, tempOff + 6 * NUM_WORDS, POINT_WORDS);
 		CurvePointMath.replace(val, rOff, tempOff + 6 * NUM_WORDS, (pIsZero ^ 1) & (qIsZero ^ 1) & sameX & (sameY ^ 1));
 		
-		int tOff = pOff + YCOORD;  // Reuses space
-		int uOff = tempOff + 6 * NUM_WORDS;
-		int u2Off = tempOff + 7 * NUM_WORDS;
-		int vOff = pOff + ZCOORD;  // Reuses space
+		@Unsigned int tOff = pOff + YCOORD;  // Reuses space
+		@Unsigned int uOff = tempOff + 6 * NUM_WORDS;
+		@Unsigned int u2Off = tempOff + 7 * NUM_WORDS;
+		@Unsigned int vOff = pOff + ZCOORD;  // Reuses space
 		Int256Math.fieldSubtract(val, t0Off, t1Off, tOff, newTempOff);
 		Int256Math.fieldSubtract(val, u0Off, u1Off, uOff, newTempOff);
 		Int256Math.fieldSquare(val, uOff, u2Off, newTempOff);
 		Int256Math.fieldMultiply(val, pOff + ZCOORD, qOff + ZCOORD, vOff, newTempOff);
 		
-		int wOff = tempOff + 8 * NUM_WORDS;
+		@Unsigned int wOff = tempOff + 8 * NUM_WORDS;
 		Int256Math.fieldSquare(val, tOff, wOff, newTempOff);
 		Int256Math.fieldMultiply(val, wOff, vOff, wOff, newTempOff);
 		Int256Math.fieldAdd(val, u0Off, u1Off, u1Off, newTempOff);
@@ -170,7 +172,7 @@ public final class CurvePointMath {
 		
 		Int256Math.fieldMultiply(val, uOff, wOff, pOff + XCOORD, newTempOff);
 		
-		int u3Off = u1Off;  // Reuses space
+		@Unsigned int u3Off = u1Off;  // Reuses space
 		Int256Math.fieldMultiply(val, uOff, u2Off, u3Off, newTempOff);
 		
 		Int256Math.fieldMultiply(val, u0Off, u2Off, u0Off, newTempOff);
@@ -184,22 +186,23 @@ public final class CurvePointMath {
 		CurvePointMath.replace(val, pOff, rOff, pIsZero | qIsZero | sameX);
 	}
 	
-	public static final int ADD_TEMP_WORDS = 9 * NUM_WORDS + Int256Math.FIELD_MULTIPLY_TEMP_WORDS;
+	public static final @Unsigned int ADD_TEMP_WORDS = 9 * NUM_WORDS + Int256Math.FIELD_MULTIPLY_TEMP_WORDS;
 	
 	
 	// Multiplies the given point by the given unsigned integer. The resulting point is usually not normalized.
 	// Requires 552 words of temporary space. Constant-time with respect to both values.
-	public static void multiply(int[] val, int pOff, int nOff, int tempOff) {
+	public static void multiply(@Unsigned int[] val, @Unsigned int pOff, @Unsigned int nOff, @Unsigned int tempOff) {
 		checkPoint(val, pOff);
 		Int256Math.checkUint(val, nOff);
 		Int256Math.checkUint(val, tempOff);
+		//Comparisons on unsigned value not allowed
 		assert val.length - tempOff >= MULTIPLY_TEMP_WORDS;
 		
 		// Precompute [p*0, p*1, ..., p*15]
 		final int tableBits = 4;  // Do not modify
-		final int tableLen = 1 << tableBits;
-		int newTempOff = tempOff + (tableLen + 1) * POINT_WORDS;
-		int tableOff = tempOff;  // Uses tableLen * POINT_WORDS elements
+		final @Unsigned int tableLen = 1 << tableBits;
+		@Unsigned int newTempOff = tempOff + (tableLen + 1) * POINT_WORDS;
+		@Unsigned int tableOff = tempOff;  // Uses tableLen * POINT_WORDS elements
 		System.arraycopy(ZERO_POINT, 0, val, tableOff, POINT_WORDS);
 		System.arraycopy(val, pOff, val, tableOff + 1 * POINT_WORDS, POINT_WORDS);
 		System.arraycopy(val, pOff, val, tableOff + 2 * POINT_WORDS, POINT_WORDS);
@@ -211,9 +214,9 @@ public final class CurvePointMath {
 		
 		// Process tableBits bits per iteration (windowed method)
 		System.arraycopy(ZERO_POINT, 0, val, pOff, POINT_WORDS);
-		int qOff = tempOff + tableLen * POINT_WORDS;
-		for (int i = Int256Math.NUM_WORDS * 32 - tableBits; i >= 0; i -= tableBits) {
-			int inc = (val[nOff + (i >>> 5)] >>> (i & 31)) & (tableLen - 1);
+		@Unsigned int qOff = tempOff + tableLen * POINT_WORDS;
+		for (@Unsigned int i = Int256Math.NUM_WORDS * 32 - tableBits; i >= 0; i -= tableBits) {
+			@Unsigned int inc = (val[nOff + (i >>> 5)] >>> (i & 31)) & (tableLen - 1);
 			for (int j = 0; j < tableLen; j++)
 				CurvePointMath.replace(val, qOff, tableOff + j * POINT_WORDS, Int256Math.equalTo(j, inc));
 			CurvePointMath.add(val, pOff, qOff, newTempOff);
@@ -224,12 +227,12 @@ public final class CurvePointMath {
 		}
 	}
 	
-	public static final int MULTIPLY_TEMP_WORDS = 17 * POINT_WORDS + ADD_TEMP_WORDS;
+	public static final @Unsigned int MULTIPLY_TEMP_WORDS = 17 * POINT_WORDS + ADD_TEMP_WORDS;
 	
 	
 	// Normalizes the coordinates of the given point. Idempotent operation.
 	// Requires 72 words of temporary space. Constant-time with respect to the point.
-	public static void normalize(int[] val, int pOff, int tempOff) {
+	public static void normalize(@Unsigned int[] val, @Unsigned int pOff, @Unsigned int tempOff) {
 		/* 
 		 * Algorithm pseudocode:
 		 * if (z != 0) {
@@ -245,11 +248,12 @@ public final class CurvePointMath {
 		
 		checkPoint(val, pOff);
 		Int256Math.checkUint(val, tempOff);
+		//Comparisons on unsigned value not allowed
 		assert val.length - tempOff >= NORMALIZE_TEMP_WORDS;
 		
-		int nonzero = Int256Math.isZero(val, pOff + ZCOORD) ^ 1;
-		int newTempOff = tempOff + POINT_WORDS;
-		int normOff = tempOff;
+		@Unsigned int nonzero = Int256Math.isZero(val, pOff + ZCOORD) ^ 1;
+		@Unsigned int newTempOff = tempOff + POINT_WORDS;
+		@Unsigned int normOff = tempOff;
 		System.arraycopy(Int256Math.FIELD_MODULUS, 0, val, tempOff, NUM_WORDS);  // Reuses space
 		Int256Math.reciprocal(val, pOff + ZCOORD, tempOff, normOff + ZCOORD, newTempOff);
 		Int256Math.fieldMultiply(val, pOff + XCOORD, normOff + ZCOORD, normOff + XCOORD, newTempOff);
@@ -262,20 +266,23 @@ public final class CurvePointMath {
 		CurvePointMath.replace(val, pOff, normOff, nonzero);
 	}
 	
-	public static final int NORMALIZE_TEMP_WORDS = POINT_WORDS + Int256Math.RECIPROCAL_TEMP_WORDS;
+	public static final @Unsigned int NORMALIZE_TEMP_WORDS = POINT_WORDS + Int256Math.RECIPROCAL_TEMP_WORDS;
 	
 	
 	/*---- Miscellaneous functions ----*/
 	
 	// Copies the point q into point p if enable is 1, or does nothing if enable is 0.
 	// Constant-time with respect to both values and the enable.
-	public static void replace(int[] val, int pOff, int qOff, int enable) {
+	public static void replace(@Unsigned int[] val, @Unsigned int pOff, @Unsigned int qOff, @Unsigned int enable) {
 		checkPoint(val, pOff);
 		checkPoint(val, qOff);
 		Int256Math.checkEnable(enable);
 		
-		int mask = -enable;
-		for (int i = 0; i < POINT_WORDS; i++)
+		@Unsigned int mask = -enable;
+		//comparison on unsigned value not allowed
+		@SuppressWarnings("signedness")
+		int a=POINT_WORDS;
+		for (int i = 0; i < a; i++)
 			val[pOff + i] = (val[qOff + i] & mask) | (val[pOff + i] & ~mask);
 	}
 	
@@ -283,14 +290,15 @@ public final class CurvePointMath {
 	// Tests whether the given point is on the elliptic curve, returning 0 or 1.
 	// The point needs to be normalized before the method is called. Zero is considered to be off the curve.
 	// Requires 56 words of temporary space. Constant-time with respect to the point.
-	public static int isOnCurve(int[] val, int pOff, int tempOff) {
+	public static @Unsigned int isOnCurve(@Unsigned int[] val, @Unsigned int pOff, @Unsigned int tempOff) {
 		checkPoint(val, pOff);
 		Int256Math.checkUint(val, tempOff);
+		//Comparisons on unsigned value not allowed
 		assert val.length - tempOff >= ISONCURVE_TEMP_WORDS;
 		
-		int rightOff   = tempOff + 0 * NUM_WORDS;
-		int constOff   = tempOff + 1 * NUM_WORDS;
-		int newTempOff = tempOff + 2 * NUM_WORDS;
+		@Unsigned int rightOff   = tempOff + 0 * NUM_WORDS;
+		@Unsigned int constOff   = tempOff + 1 * NUM_WORDS;
+		@Unsigned int newTempOff = tempOff + 2 * NUM_WORDS;
 		Int256Math.fieldSquare(val, pOff + XCOORD, rightOff, newTempOff);
 		System.arraycopy(A, 0, val, constOff, NUM_WORDS);
 		Int256Math.fieldAdd(val, rightOff, constOff, rightOff, newTempOff);
@@ -298,17 +306,17 @@ public final class CurvePointMath {
 		System.arraycopy(B, 0, val, constOff, NUM_WORDS);
 		Int256Math.fieldAdd(val, rightOff, constOff, rightOff, newTempOff);
 		
-		int leftOff = tempOff + 1 * NUM_WORDS;  // Reuses space
+		@Unsigned int leftOff = tempOff + 1 * NUM_WORDS;  // Reuses space
 		Int256Math.fieldSquare(val, pOff + YCOORD, leftOff, newTempOff);
 		return Int256Math.equalTo(val, leftOff, rightOff) & (isZero(val, pOff) ^ 1);
 	}
 	
-	public static final int ISONCURVE_TEMP_WORDS = 2 * NUM_WORDS + Int256Math.FIELD_MULTIPLY_TEMP_WORDS;
+	public static final @Unsigned int ISONCURVE_TEMP_WORDS = 2 * NUM_WORDS + Int256Math.FIELD_MULTIPLY_TEMP_WORDS;
 	
 	
 	// Tests whether the given point is equal to the special zero point.
 	// The point need not be normalized. Constant-time with respect to the point.
-	public static int isZero(int[] val, int pOff) {
+	public static @Unsigned int isZero(@Unsigned int[] val, @Unsigned int pOff) {
 		// p.x == 0 && p.y != 0 && p.z == 0
 		checkPoint(val, pOff);
 		return Int256Math.isZero(val, pOff + XCOORD) & Int256Math.isZero(val, pOff + ZCOORD)
@@ -324,7 +332,7 @@ public final class CurvePointMath {
 	
 	/*---- Helper functions ----*/
 	
-	private static void checkPoint(int[] arr, int off) {
+	private static void checkPoint(@Unsigned int[] arr, @Unsigned int off) {
 		Int256Math.checkFieldInt(arr, off + XCOORD);
 		Int256Math.checkFieldInt(arr, off + YCOORD);
 		Int256Math.checkFieldInt(arr, off + ZCOORD);
@@ -334,9 +342,9 @@ public final class CurvePointMath {
 	/*---- Class constants ----*/
 	
 	// Sizes and offsets
-	static final int XCOORD = 0 * NUM_WORDS;
-	static final int YCOORD = 1 * NUM_WORDS;
-	static final int ZCOORD = 2 * NUM_WORDS;
+	static final @Unsigned int XCOORD = 0 * NUM_WORDS;
+	static final @Unsigned int YCOORD = 1 * NUM_WORDS;
+	static final @Unsigned int ZCOORD = 2 * NUM_WORDS;
 	
 	// Curve parameters
 	static final int[] A     = {0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000};

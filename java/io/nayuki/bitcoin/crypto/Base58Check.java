@@ -11,6 +11,7 @@ package io.nayuki.bitcoin.crypto;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
+import org.checkerframework.checker.signedness.qual.*;
 import java.util.Arrays;
 
 
@@ -22,7 +23,7 @@ public final class Base58Check {
 	/*---- Static functions ----*/
 	
 	// Adds the checksum and converts to Base58Check. Note that the caller needs to prepend the version byte(s).
-	public static String bytesToBase58(byte[] data) {
+	public static String bytesToBase58(@Unsigned byte[] data) {
 		return rawBytesToBase58(addCheckHash(data));
 	}
 	
@@ -46,9 +47,9 @@ public final class Base58Check {
 	
 	
 	// Returns a new byte array by concatenating the given array with its checksum.
-	static byte[] addCheckHash(byte[] data) {
+	static byte[] addCheckHash(@Unsigned byte[] data) {
 		try {
-			byte[] hash = Arrays.copyOf(Sha256.getDoubleHash(data).toBytes(), 4);
+			@Unsigned byte[] hash = Arrays.copyOf(Sha256.getDoubleHash(data).toBytes(), 4);
 			ByteArrayOutputStream buf = new ByteArrayOutputStream();
 			buf.write(data);
 			buf.write(hash);
@@ -61,11 +62,11 @@ public final class Base58Check {
 	
 	// Converts the given Base58Check string to a byte array, verifies the checksum, and removes the checksum to return the payload.
 	// The caller is responsible for handling the version byte(s).
-	public static byte[] base58ToBytes(String s) {
-		byte[] concat = base58ToRawBytes(s);
-		byte[] data = Arrays.copyOf(concat, concat.length - 4);
-		byte[] hash = Arrays.copyOfRange(concat, concat.length - 4, concat.length);
-		byte[] rehash = Arrays.copyOf(Sha256.getDoubleHash(data).toBytes(), 4);
+	public static @Unsigned byte[] base58ToBytes(String s) {
+		@Unsigned byte[] concat = base58ToRawBytes(s);
+		@Unsigned byte[] data = Arrays.copyOf(concat, concat.length - 4);
+		@Unsigned byte[] hash = Arrays.copyOfRange(concat, concat.length - 4, concat.length);
+		@Unsigned byte[] rehash = Arrays.copyOf(Sha256.getDoubleHash(data).toBytes(), 4);
 		if (!Arrays.equals(rehash, hash))
 			throw new IllegalArgumentException("Checksum mismatch");
 		return data;
@@ -73,7 +74,7 @@ public final class Base58Check {
 	
 	
 	// Converts the given Base58Check string to a byte array, without checking or removing the trailing 4-byte checksum.
-	static byte[] base58ToRawBytes(String s) {
+	static @Unsigned byte[] base58ToRawBytes(String s) {
 		// Parse base-58 string
 		BigInteger num = BigInteger.ZERO;
 		for (int i = 0; i < s.length(); i++) {
